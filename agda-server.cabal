@@ -1,0 +1,23 @@
+Name:               agda-server
+Description:        Provides a TCP server wrapper to the Agda interpreter.
+
+Version:            0.0
+Cabal-version:      >= 1.8
+Build-type:         Simple
+
+License:            AllRightsReserved
+Copyright:          Will Jones
+Homepage:           http://sacharissa.co.uk
+
+Library
+  Exposed-modules:  Agda.Interaction.ServerInteractionTop
+  Build-depends:    Agda, base, xml
+  Hs-source-dirs:   src
+
+Executable agda-server
+  Other-modules:    Agda.Interaction.ServerInteractionTop
+  Build-depends:    Agda, base, xml
+
+  Main-is:          AgdaServer.hs
+  Hs-source-dirs:   src
+  Ghc-options:      -main-is AgdaServer
