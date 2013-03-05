@@ -11,12 +11,12 @@ Homepage:           http://sacharissa.co.uk
 
 Library
   Exposed-modules:  Agda.Interaction.ServerInteractionTop
-  Build-depends:    Agda, base, xml
+  Build-depends:    Agda, aeson, base
   Hs-source-dirs:   src
 
 Executable agda-server
   Other-modules:    Agda.Interaction.ServerInteractionTop
-  Build-depends:    Agda, base, xml
+  Build-depends:    Agda, aeson, base
 
   Main-is:          AgdaServer.hs
   Hs-source-dirs:   src
