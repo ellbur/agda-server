@@ -1,17 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Agda.Interaction.ServerInteractionTop where
 
 import Agda.Interaction.InteractionTop
 import Agda.Interaction.Response
+import Agda.TypeChecking.Errors
 import Agda.TypeChecking.Monad.Base
 
 import Control.Applicative
 import Control.Monad
-import Data.Aeson
+import Data.Aeson hiding (json)
 import Data.Aeson.Types
+import Data.IORef
 import Data.Text
 import Web.Scotty
+
+import qualified Control.Monad.State as St
+import qualified Data.Foldable as F
+import qualified Data.Sequence as S
 
 data Request
   = RequestR FilePath RequestType
@@ -74,7 +81,45 @@ requestIOTCM rq@(RequestR filePath ty)
   = IOTCM filePath NonInteractive Direct $
       requestInteraction rq
 
-runIOTCM :: CommandState -> IOTCM -> IO CommandState
+runIOTCM :: CommandState -> IOTCM -> IO (S.Seq Response, CommandState)
 runIOTCM st ioTCM
-  = either (const st) snd <$>
-      runTCM (runCommandM (runInteraction ioTCM) st)
+  = do
+      responseRef <- newIORef S.empty
+
+      result <- runTCM $ do
+        setInteractionOutputCallback $ \res ->
+          St.liftIO (modifyIORef responseRef (S.|> res))
+
+        runCommandM (runInteraction ioTCM) st
+
+      case result of
+        Left err -> do
+          errResponse <-
+            Resp_DisplayInfo . Info_Error . either undefined id <$>
+              runTCM (prettyError err)
+
+          return (S.singleton errResponse, st)
+
+        Right (_, st') ->
+          (, st') <$> readIORef responseRef
+
+setInteractionOutputCallback :: InteractionOutputCallback -> TCM ()
+setInteractionOutputCallback f
+  = St.modify $ \st -> st { stInteractionOutputCallback = f }
+
+type Port
+  = Int
+
+runAgdaServer :: Port -> IO ()
+runAgdaServer port
+  = do
+      stRef <- newIORef initCommandState
+
+      scotty port $ do
+        post "/" $ do
+          ioTCM <- requestIOTCM <$> jsonData
+          st <- St.liftIO (readIORef stRef)
+          (rs, st') <- St.liftIO (runIOTCM st ioTCM)
+          St.liftIO (writeIORef stRef st')
+          let arr = toJSON (F.toList rs)
+          json arr
