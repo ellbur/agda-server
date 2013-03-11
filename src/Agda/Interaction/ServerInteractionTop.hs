@@ -63,8 +63,39 @@ instance ToJSON Response where
   toJSON (Resp_HighlightingInfo info mod)
     = typedObject "highlighting" []
 
+  toJSON (Resp_Status (Status showImplicits checked))
+    = typedObject "status"
+        [ "showImplicitArguments" .= showImplicits
+        , "checked" .= checked
+        ]
+
+  toJSON (Resp_DisplayInfo info)
+    = displayInfoToJSON info
+
+  toJSON Resp_ClearRunningInfo
+    = typedObject "clearRunningInfo" []
+
+  toJSON Resp_ClearHighlighting
+    = typedObject "clearHighlighting" []
+
   toJSON _
     = object []
+
+displayInfoToJSON :: DisplayInfo -> Value
+displayInfoToJSON Info_CompilationOk
+  = typedObject "compilationOk" []
+
+displayInfoToJSON (Info_Constraints cs)
+  = typedObject "constraints" ["value" .= cs]
+
+displayInfoToJSON (Info_AllGoals gs)
+  = typedObject "goals" ["value" .= gs]
+
+displayInfoToJSON (Info_Error err)
+  = typedObject "error" ["message" .= err]
+
+displayInfoToJSON _
+  = typedObject "display" []
 
 requestInteraction :: Request -> Interaction
 requestInteraction (RequestR filePath LoadR)
